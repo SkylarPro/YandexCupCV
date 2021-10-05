@@ -428,7 +428,7 @@ def build_model(state_dict: dict):
     
  
     embed_dim = 768 #state_dict["text_projection"].shape[1]
-    context_length = state_dict["positional_embedding"].shape[0]
+    context_length = 10#state_dict["positional_embedding"].shape[0]
     vocab_size = state_dict["token_embedding.weight"].shape[0]
     transformer_width = state_dict["ln_final.weight"].shape[0]
     transformer_heads = transformer_width // 64
