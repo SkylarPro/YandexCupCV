@@ -16,7 +16,7 @@ from typing import List
 import matplotlib.pyplot as plt
 from itertools import chain
 import pandas as pd
-
+import numpy as np
 
 cufflinks.go_offline()
 cufflinks.set_config_file(world_readable=True, theme='pearl')
@@ -89,7 +89,7 @@ class Analys:
     
     def get_random_data(self,data_size: int):
         ind = self._get_rand_idexs(data_size)
-        return [self.data[i] for i in ind]
+        return [self.data[i] for i in ind], ind
         
     def _get_rand_idexs(self,data_size: int):
         indeces = list(range(len(self.data)))

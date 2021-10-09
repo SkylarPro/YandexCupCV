@@ -1,3 +1,6 @@
+/sentence-transformers/
+/src/data/
+/src/clasters_data
 /images.json
 /metadata.json
 /mlcup

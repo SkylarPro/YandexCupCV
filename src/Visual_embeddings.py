@@ -8,6 +8,9 @@ from numpy import typing as npt
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 get_ipython().run_line_magic('matplotlib', 'inline')
+from typing import List
+import numpy as np
+from sklearn.manifold import TSNE
 
 class VisualEmb:
     
@@ -27,10 +30,9 @@ class VisualEmb:
             
             self.squeeze_emb = tsne_model_en_2d.fit_transform(self.embeding.reshape(n,-1))
     
-    @property
-    def plot_embedings(self,title="Plot embedings",a = 0.5,filename = None):
-        
-        if not isinstance(type(self.squeeze_emb), type(np.ndarray)):
+    def plot_embedings(self,title="Plot embedings",a = 0.8,filename = None):
+        print(isinstance(type(self.squeeze_emb), type(np.ndarray)))
+        if not self.squeeze_emb is np.ndarray:
             self._squeeze_features()
             
         colors = cm.rainbow(np.linspace(0, 1, max(self.labels)+1))

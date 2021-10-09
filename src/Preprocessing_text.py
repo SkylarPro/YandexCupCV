@@ -21,6 +21,7 @@ config_prep_text = {
     "clean_punct": True,
     "clean_stw": True,
     "word_to_lemma": True,
+    "min_len_sent" :1,
 }
 
 class PreprocText:
@@ -39,22 +40,22 @@ class PreprocText:
         self.balance_class = []
         self._morph = pymorphy2.MorphAnalyzer(lang='ru')
         self._stpword = stpword
+        self.empty_class = []
         
     def _processing_text(self,proc_text):
+        proc_text = proc_text.lower() if self.config.get("lower_text") == True else proc_text
+        proc_text = re.sub('[^а-я]', " ",proc_text) if self.config.get("only_ru_simb") == True else proc_text
+        proc_text = proc_text.replace("  ", " ") if self.config.get("clean_space") == True else proc_text
         
-        proc_text = proc_text.lower() if config.get("lower_text") == True else proc_text
-        proc_text = re.sub('[^а-я]', " ",proc_text) if config.get("only_ru_simb") == True else proc_text
-        proc_text = proc_text.replace("  ", " ") if config.get("clean_space") == True else proc_text
-        
-        proc_text = re.sub(r"http\S+", "",proc_text) if config.get("clean_link") == True else proc_text
-        proc_text = re.sub(r'#','',proc_text) if config.get("clean_hashtag") == True else proc_text
+        proc_text = re.sub(r"http\S+", "",proc_text) if self.config.get("clean_link") == True else proc_text
+        proc_text = re.sub(r'#','',proc_text) if self.config.get("clean_hashtag") == True else proc_text
     
-        proc_text = [char for char in proc_text if char not in string.punctuation] if config.get("clean_punct") == True else proc_text
+        proc_text = [char for char in proc_text if char not in string.punctuation] if self.config.get("clean_punct") == True else proc_text
         proc_text = ''.join(proc_text)
         
-        proc_text =  ' '.join([word for word in proc_text.split() if word.lower() not in self._stpword]) if config.get("clean_stw") == True  else proc_text
+        proc_text =  ' '.join([word for word in proc_text.split() if word.lower() not in self._stpword]) if self.config.get("clean_stw") == True  else proc_text
         
-        if config.get("word_to_lemma") == True:
+        if self.config.get("word_to_lemma") == True:
             proc_text = self.tokenizer.tokenize(proc_text)
             sent_lemm = []
         
@@ -96,6 +97,9 @@ class PreprocText:
             else:
                 data_proc.append(text)
                 
+            if class_count[step[0]] == 0:
+                self.empty_class.append(step[0])
+                
         assert len(data_proc) == sum(class_count)
         
         return data_proc, class_count
@@ -114,8 +118,9 @@ class PreprocText:
                 self.procc_text.append(self._result_queue.get())
             
         assert len(self.procc_text) == len(data), f"{len(self.procc_text)} != {len(data)}"
-        
-        self.procc_text, self.balance_class = self._balans_start_index(class_count) if class_count else data, None
-         
+       
+        if class_count:
+            self.procc_text, self.balance_class = self._balans_start_index(class_count)
+        else: 
+            self.procc_text, self.balance_class = self.procc_text, None
         return self.procc_text, self.balance_class
-
