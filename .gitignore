@@ -1,11 +1,6 @@
 /sentence-transformers/
-/src/data/
-/src/clasters_data
-/images.json
-/metadata.json
+/src/clastering/data
 /mlcup
-/CLIP/notebooks/CIFAR100/
-/word2vec-tsne/
-/similar_words.png
-/test.png
+/CLIP
 /ru-clip
+/src/train/data
