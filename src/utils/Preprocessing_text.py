@@ -1,3 +1,5 @@
+from itertools import chain
+import pandas as pd
 #!/usr/bin/env python
 # coding: utf-8
 
@@ -43,6 +45,8 @@ class PreprocText:
         self.empty_class = []
         
     def _processing_text(self,proc_text):
+        idx = proc_text[0]
+        proc_text = proc_text[1]
         proc_text = proc_text.lower() if self.config.get("lower_text") == True else proc_text
         proc_text = re.sub('[^а-я]', " ",proc_text) if self.config.get("only_ru_simb") == True else proc_text
         proc_text = proc_text.replace("  ", " ") if self.config.get("clean_space") == True else proc_text
@@ -68,7 +72,7 @@ class PreprocText:
                     sent_lemm.append(word)
             proc_text = ' '.join(sent_lemm)
                 
-        return proc_text
+        return idx, proc_text
     
     def _worker(self, task):
         result = self._processing_text(task)
@@ -86,12 +90,13 @@ class PreprocText:
         step = [-1, 0]
         min_len_sent = self.config.get("min_len_sent")
         
-        for idx, text in enumerate(self.procc_text):
+        for idx, (_,text) in enumerate(self.procc_text):
+            
             if step[1] == idx:
                 step[0] += 1
                 step[1] += class_count[step[0]]
 
-            if min_len_sent and len(text.split()) <= min_len_sent:
+            if len(text.split()) <= min_len_sent:
                 # минимальное количество слов в предложении
                 class_count[step[0]] -= 1
             else:
@@ -113,12 +118,13 @@ class PreprocText:
         
         with mp.Pool(n_worker) as p:
             p.map(self._worker, data)
-            
-            for _ in range(len(data)):
-                self.procc_text.append(self._result_queue.get())
+        
+        for _ in range(len(data)):
+            self.procc_text.append(self._result_queue.get())
             
         assert len(self.procc_text) == len(data), f"{len(self.procc_text)} != {len(data)}"
-       
+        print("Started sorting")
+        self.procc_text = sorted(self.procc_text)
         if class_count:
             self.procc_text, self.balance_class = self._balans_start_index(class_count)
         else: 

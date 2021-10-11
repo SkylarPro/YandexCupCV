@@ -43,7 +43,7 @@ class Analys:
         """
         pass
         """
-        
+        #Good
         layout = go.Layout(
             title = f"Length{len_type} of the text"
         )
@@ -63,6 +63,7 @@ class Analys:
                         name_plot:str = "Ngramms",
                         
                        ):
+        #Good
         frequency_word = self.get_top_ngramm(corpus,ngrams,n)
         enable_plotly_in_cell()
         layout = go.Layout(
@@ -77,6 +78,7 @@ class Analys:
 
     
     def get_top_ngramm(self,corpus, ngrams = (1,1),n = None):
+        #Good
         corpus = list(["SEP".join(text) for text in corpus]) if type(corpus[-1]) == list else corpus
         
         vec = CountVectorizer(ngram_range=ngrams).fit(corpus)
@@ -88,26 +90,33 @@ class Analys:
         return words_freq[:n]
     
     def get_random_data(self,data_size: int):
+        #Good
         ind = self._get_rand_idexs(data_size)
         return [self.data[i] for i in ind], ind
         
     def _get_rand_idexs(self,data_size: int):
-        indeces = list(range(len(self.data)))
+        #Good
+        indeces = list(self.data.keys())
         np.random.shuffle(indeces)
         return indeces[:data_size]
         
-    def _len_sent_char(self,data):
+    def _len_sent_char(self,data: List[str]):
+        #Good
         return list(chain.from_iterable([list(map(len,sent)) for sent in data]))
     
-    def _len_sent_words(self,data):
+    def _len_sent_words(self,data: List[str]):
+        #Good
         return list(chain.from_iterable([list(map(len,list(map(str.split,sent)))) for sent in data]))
         
     def _load_data(self,data_path) -> List[str]:
-        data = []
+        #Good
+        data = {}
         with jsonlines.open(data_path) as reader:
             if True:
                 reader = tqdm(reader)
             for obj in reader:
-                data.append(obj['queries'])
+                if obj['image'] not in data:
+                    data[obj['image']] = obj['queries']
+                
         return data
 
