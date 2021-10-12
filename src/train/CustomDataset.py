@@ -23,6 +23,8 @@ from PIL import Image
 
 
 from os import listdir
+import os
+
 from os.path import isfile, join
 
 import sys
@@ -48,7 +50,7 @@ class Sent2textDataset(Dataset):
         path_i_folder - путь для сохранения скаченных фотографий
         clastering_mode - тексты разбиты на кластеры
         """
-        self.text_data = pd.read_csv(path_t_csv)
+        self.text_data = pd.read_csv(path_t_csv) if type(path_t_csv) == str else path_t_csv 
         self.img_links = self._load_json_links(path_i_json) # links to download images
         
         
@@ -58,8 +60,12 @@ class Sent2textDataset(Dataset):
             manager = mp.Manager()
             self._imgs_path = manager.Queue()
             self._load_imgs(list(self.img_links.items()),n_workers = 16)
+            self._check_data_in_folder()
+            self._check_open_images()
+            
         else:
             #check data
+            self._check_open_images()
             self._check_data_in_folder()
             
         self.clastering_mode = clastering_mode
@@ -74,6 +80,19 @@ class Sent2textDataset(Dataset):
         
     def __len__(self,):
         return self.text_data.id_img.unique().shape[0]
+    
+    def _check_open_images(self,):
+        onlyfiles = [f for f in listdir(self.path_to_img) if isfile(join(self.path_to_img, f))]
+        count = 0 
+        for i_file in onlyfiles:
+            path_i = f"{self.path_to_img}/{i_file}"
+            img = cv2.imread(path_i, cv2.IMREAD_COLOR)
+            
+            if not hasattr(img,"shape"):
+                os.remove(path_i)
+                count+=1
+        print(f"Broken {count} images")
+        return True
     
     
     def _stack_texts(self,now_idx):
@@ -117,14 +136,14 @@ class Sent2textDataset(Dataset):
         
         if self.mode == "Sber":
             assert self.args != None, f"Define args"
-            input_ids, attention_mask = get_text_batch(texts, self.tokenizer, self.args)
+            input_ids, attention_mask = get_text_batch([text], self.tokenizer, self.args)
             if self.transform == None:
                 image = [Image.fromarray(img)] # get_image_batch take shape count_i,img_dat
                 img_input = get_image_batch(image, self.args.img_transform, self.args)
             else:
                 img_input = self.transform(img)
                 
-        return (img_input, input_ids, attention_mask), gt_idx, texts
+        return (img_input, input_ids, attention_mask) #, gt_idx, text
         
         
     
@@ -134,14 +153,19 @@ class Sent2textDataset(Dataset):
         """
         #оставить в csv файле только те sample изображения которых есть в папке
         onlyfiles = {int(f[:-4]): True for f in listdir(self.path_to_img) if isfile(join(self.path_to_img, f))}
-        counter = 0
-        start_count = len(self.text_data.id_img.unique())
-        for id_img in self.text_data.id_img.unique().copy():
-            if onlyfiles.get(id_img) == None:
-                self.text_data = self.text_data.drop(self.text_data[self.text_data.id_img == id_img].index)
-            else:
-                counter+= 1
-        print(f"From {start_count} sample folder hasn't {start_count - counter}")
+        
+        new_df = pd.DataFrame([], columns = self.text_data.columns.values)
+        data = []
+        for id_img in onlyfiles:
+            row = self.text_data[self.text_data["id_img"] == id_img]
+            if row.shape[0] != 0:
+                data.append(row)
+                
+        new_df = new_df.append(data, ignore_index=True)
+                
+        print(f"{new_df.shape[0]} images in folder from {self.text_data.shape[0]} in csv file")
+        self.text_data = new_df
+        
                 
     
     def _load_json_links(self,data_path: str, only_i_from_csv = True)->Dict[int, Tuple[str,str]]:
@@ -173,7 +197,7 @@ class Sent2textDataset(Dataset):
         try:
             response = requests.get(f"{links[1]}")
             with open(f"{self.path_to_img}/{links[0]}.jpg", "wb") as img:
-                if response.content:
+                if response.content and response.status_code == 200:
                     img.write(response.content)
                     return links[0]
                 else:
@@ -206,7 +230,3 @@ class Sent2textDataset(Dataset):
 
 
 # In[ ]:
-
-
-
-
