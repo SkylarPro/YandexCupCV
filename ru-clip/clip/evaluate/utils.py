@@ -53,9 +53,7 @@ def get_text_batch(lines, tokenizer, args):
         text["attention_mask"][pos] = 1
         texts.append(text)
     input_ids = torch.LongTensor([x["input_ids"] for x in texts]).long()
-    input_ids = input_ids.to(input_ids.device if args.cpu else torch.cuda.current_device())
-    attention_mask = torch.LongTensor([x["attention_mask"] for x in texts]).long().to(
-        input_ids.device if args.cpu else torch.cuda.current_device())
+    attention_mask = torch.LongTensor([x["attention_mask"] for x in texts]).long()
     return input_ids, attention_mask
 
 

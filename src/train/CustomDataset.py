@@ -42,7 +42,7 @@ class Sent2textDataset(Dataset):
                  path_i_folder, down_data = False,
                  n_classes = 20, args = None,
                  tokenizer = None, clastering_mode = False,
-                 transform = None, mode = "Sber",
+                 transform = None, mode = "Sber", check_img = True
                 ):
         """
         path_t_csv - путь до csv файла с текстами
@@ -61,11 +61,11 @@ class Sent2textDataset(Dataset):
             self._imgs_path = manager.Queue()
             self._load_imgs(list(self.img_links.items()),n_workers = 16)
             self._check_data_in_folder()
-            self._check_open_images()
+            self._check_open_images() if check_img
             
         else:
             #check data
-            self._check_open_images()
+            self._check_open_images() if check_img
             self._check_data_in_folder()
             
         self.clastering_mode = clastering_mode

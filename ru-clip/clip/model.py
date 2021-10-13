@@ -120,5 +120,4 @@ def get_image_batch(img_paths, img_transform, args):
         image = img_transform(image)
         images.append(image)
     images = torch.tensor(np.stack(images))
-    images = images.to(images.device if args.cpu else torch.cuda.current_device())
     return images
