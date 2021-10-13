@@ -1,6 +1,7 @@
 /sentence-transformers/
 /src/clastering/data
 /mlcup
-/CLIP
-/ru-clip
+/ru-clip/examples
+/ru-clip/LICENSE
+/ru-clip/README.md
 /src/train/data
