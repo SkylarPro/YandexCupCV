@@ -48,7 +48,7 @@ class TextEncoder(nn.Module):
 
     def forward(self, x: torch.Tensor, **kwargs):
         x = self.model(x, **kwargs)[0][(x == self.eos_token_id).nonzero(as_tuple=True)]
-        # print(x.shape)
+#         print(x.shape)
         x = self.projection(x)
         projection_len = torch.norm(x, dim=-1, keepdim=True)
         return x / projection_len

@@ -72,7 +72,7 @@ class Sent2textDataset(Dataset):
         self.clastering_mode = clastering_mode
         self.transform = img_transform
         self.mode = mode
-        self.len_seq = 12 
+        self.len_seq = 15 
         # class count get for traning
         self.n_classes = n_classes
         # for tokenizer text, depend on model

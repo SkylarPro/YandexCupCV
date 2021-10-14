@@ -12,8 +12,8 @@ from clip.origin.clip import load
 from transformers import GPT2Model, GPT2Config,GPT2Tokenizer
 
 
-def get_tokenizer(cache_dir, pretrained_model_name="sberbank-ai/rugpt3small_based_on_gpt2"):
-    tokenizer = GPT2Tokenizer.from_pretrained(pretrained_model_name, cache_dir = cache_dir)
+def get_tokenizer(vocab = "./cache/tokenizer/GPT2_small/vocab.json", merges="./cache/tokenizer/GPT2_small/merges.txt"):
+    tokenizer = GPT2Tokenizer(vocab, merges)
     add_tokens = tokenizer.add_special_tokens({"bos_token": "<s>"})
 
     assert add_tokens == 0
@@ -25,7 +25,7 @@ def get_tokenizer(cache_dir, pretrained_model_name="sberbank-ai/rugpt3small_base
     return tokenizer
 
 
-def load_model(path_to_model = "./cache/models/allmodel.pt", path_to_tokenizer = "./cache/tokenizer"):
+def load_model(path_to_model = "./cache/models/GPT2small_All_and_VIT32_small_N0.pt"):
     
     visual_model, img_transform = load(path_to_model,jit = False)
     
@@ -34,8 +34,16 @@ def load_model(path_to_model = "./cache/models/allmodel.pt", path_to_tokenizer =
     configuration.vocab_size = 50264
     configuration.n_ctx = 2048
     configuration.n_positions = 2048
+    ### GPT medium
+    #     configuration.vocab_size = 50257
+    #     configuration.n_ctx = 2048
+    #     configuration.n_positions = 2048
+        
+    #     configuration.n_layer = 24
+    #     configuration.n_embd = 1024
+    #     configuration.n_head = 16
     text_model = GPT2Model(configuration)
-    text_model.h = text_model.h[:8]
+#     text_model.h = text_model.h[:10]
     
     
     visual_encoder = VisualEncoder(
@@ -57,6 +65,6 @@ def load_model(path_to_model = "./cache/models/allmodel.pt", path_to_tokenizer =
     sd = torch.load(path_to_model)
     model.load_state_dict(sd)
     
-    tokenizer = get_tokenizer(path_to_tokenizer)
+    tokenizer = get_tokenizer()
     
     return model, img_transform, tokenizer

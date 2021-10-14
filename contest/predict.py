@@ -12,12 +12,8 @@ import json
 import click
 
 
-
 from clip.evaluate.utils import (
-    load_weights_only,
-)
-from clip.evaluate.utils import (
-    get_text_batch, get_image_batch, get_tokenizer,
+    get_text_batch, get_image_batch,
 )
 
 
@@ -32,16 +28,16 @@ from load_model import load_model
 class I2TInferer(object):
     def __init__(
         self,
-        ckpt_path: str == None,
-        device: str == None,
+        ckpt_path: str = None,
+        device: str = None,
         ):
         
         #load tools
-        model, img_transfrom, text_tokenizer = load_model(ckpt_path)
+        model, img_transfrom, text_tokenizer = load_model()
         self.len_seq = 12
         
-        self.tokenizer = text_tokenizer # надо будет скачать #instantiate(cfg._data.tokenizer)
-        self.image_transform = img_transfrom #get_image_transform(randomize=False)
+        self.tokenizer = text_tokenizer
+        self.image_transform = img_transfrom
         
         model = model.eval()
         model = model.to(device)
@@ -65,7 +61,7 @@ class I2TInferer(object):
             images = [self.image_transform(x.convert('RGB')) for x in chunk]
             
             images = torch.tensor(np.stack(images))
-            images = images.to(device)
+            images = images.to(self.device)
             
             chunk_image_features = self.model.visual_encoder(images).cpu().detach()
             image_features.append(chunk_image_features)
@@ -78,7 +74,7 @@ class I2TInferer(object):
         text_features = self.encode_texts(classes)
         image_features = self.encode_images(images)
         
-        logits_per_text = self.logit_scale * text_features @ image_features.t()
+        logits_per_text = self.logit_scale * image_features @ text_features.t()
         
         _, preds = torch.max(logits_per_text, 1)
         
@@ -103,11 +99,11 @@ def main(
     num_threads: Optional[int],
     dataset: Optional[List[str]]
 ):
+    warnings.simplefilter('always', DeprecationWarning)
     if num_threads is not None:
         torch.set_num_threads(num_threads)
     
     
-    ckpt_path = None
     inferer = I2TInferer(ckpt_path=ckpt_path, device=device)
     if dataset:
         datasets = dataset

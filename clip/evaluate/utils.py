@@ -13,15 +13,29 @@ from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor
 from clip.download_utils import download_file_from_hf
 
 
+# MODELS = {
+#     "ViT-B/32-small": {
+#         "visual_encoder_name": "ViT-B/32",
+#         "load": "ViT-B/32",
+#         "load_huggingface": "sberbank-ai/rugpt3small_based_on_gpt2",
+#         "visual_encoder_dim": 512,
+#         "clip_projection_dim": 1024,
+#         "eos_token_id": 2,
+#         "hidden_size": 768,
+#         "cpt_name": "ViT-B32-small.pt"
+#     }
+# }
+
+
 MODELS = {
     "ViT-B/32-small": {
         "visual_encoder_name": "ViT-B/32",
         "load": "ViT-B/32",
-        "load_huggingface": "sberbank-ai/rugpt3small_based_on_gpt2",
+        "load_huggingface": "sberbank-ai/rugpt3medium_based_on_gpt2",
         "visual_encoder_dim": 512,
         "clip_projection_dim": 1024,
         "eos_token_id": 2,
-        "hidden_size": 768,
+        "hidden_size": 1024,
         "cpt_name": "ViT-B32-small.pt"
     }
 }
@@ -133,7 +147,7 @@ def _load_weights_only(args):
     checkpoint_name = download_file_from_hf(args.cpt_name)
 
     sd = torch.load(checkpoint_name, map_location='cpu')
-    model.load_state_dict(sd)
+#     model.load_state_dict(sd)
     args.img_transform = img_transform
     return model, args
 
