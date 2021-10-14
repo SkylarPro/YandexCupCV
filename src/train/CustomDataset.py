@@ -2,7 +2,8 @@
 # coding: utf-8
 
 # In[ ]:
-
+import sys
+sys.path.append("/data/hdd1/brain/BraTS19/YandexCup")
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -27,10 +28,9 @@ import os
 
 from os.path import isfile, join
 
-import sys
-sys.path.append("/data/hdd1/brain/BraTS19/YandexCup/ru-clip")
 
-from clip.evaluate.utils import (
+
+from clip.evaluate.utils import  (
     get_text_batch, get_image_batch, get_tokenizer,
 )
 
@@ -38,11 +38,12 @@ from clip.evaluate.utils import (
 
 class Sent2textDataset(Dataset):
     
-    def __init__(self,path_t_csv, path_i_json, 
-                 path_i_folder, down_data = False,
-                 n_classes = 20, args = None,
-                 tokenizer = None, clastering_mode = False,
-                 transform = None, mode = "Sber", check_img = True
+    def __init__(self, path_t_csv, path_i_json,
+                 path_i_folder,
+                 text_tokenizer,img_transform,
+                 down_data = False,
+                 n_classes = 20, clastering_mode = False,
+                 mode = "Sber", check_img = True
                 ):
         """
         path_t_csv - путь до csv файла с текстами
@@ -61,21 +62,21 @@ class Sent2textDataset(Dataset):
             self._imgs_path = manager.Queue()
             self._load_imgs(list(self.img_links.items()),n_workers = 16)
             self._check_data_in_folder()
-            self._check_open_images() if check_img
+            self._check_open_images() if check_img else True
             
         else:
             #check data
-            self._check_open_images() if check_img
+            self._check_open_images() if check_img else True
             self._check_data_in_folder()
             
         self.clastering_mode = clastering_mode
-        self.transform = transform
-        self.args = args
+        self.transform = img_transform
         self.mode = mode
+        self.len_seq = 12 
         # class count get for traning
         self.n_classes = n_classes
         # for tokenizer text, depend on model
-        self.tokenizer = get_tokenizer() if tokenizer == None else tokenizer
+        self.tokenizer = text_tokenizer
         
         
     def __len__(self,):
@@ -135,13 +136,9 @@ class Sent2textDataset(Dataset):
         
         
         if self.mode == "Sber":
-            assert self.args != None, f"Define args"
-            input_ids, attention_mask = get_text_batch([text], self.tokenizer, self.args)
-            if self.transform == None:
-                image = [Image.fromarray(img)] # get_image_batch take shape count_i,img_dat
-                img_input = get_image_batch(image, self.args.img_transform, self.args)
-            else:
-                img_input = self.transform(img)
+            input_ids, attention_mask = get_text_batch([text], self.tokenizer, self.len_seq)
+            image = [Image.fromarray(img)] # get_image_batch take shape count_i,img_dat
+            img_input = get_image_batch(image, self.transform)
                 
         return (img_input, input_ids, attention_mask) #, gt_idx, text
         
