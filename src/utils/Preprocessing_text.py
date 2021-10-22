@@ -9,26 +9,29 @@ import pandas as pd
 import pymorphy2
 import multiprocessing as mp
 from nltk.tokenize import TweetTokenizer
-from typing import Dict, List
+from typing import Dict, List,Tuple
 import re
 import string
 
 
 config_prep_text = {
+    "path_to_csv":"Output.csv",
+    "path_from_csv":"Input.csv",
+    "remove_input_data":False,
     "lower_text":True,
     "only_ru_simb":True,
     "clean_space": True,
     "clean_link": True,
     "clean_hashtag": True,
     "clean_punct": True,
-    "clean_stw": True,
     "word_to_lemma": True,
     "min_len_sent" :1,
+    "stopwrd": [],
 }
 
 class PreprocText:
     
-    def __init__(self,config:Dict[str, bool], tokenizer=None,stpword: List[str] = []):
+    def __init__(self,config:Dict[str, bool], tokenizer=None,):
         if tokenizer:
             self.tokenizer = tokenizer
         else:
@@ -36,12 +39,13 @@ class PreprocText:
                                                                     reduce_len=True,                                    
                                                                    )
         self.config = config
+        
         m = mp.Manager()
         self._result_queue = m.Queue()
         self.procc_text = []
+        
         self.balance_class = []
         self._morph = pymorphy2.MorphAnalyzer(lang='ru')
-        self._stpword = stpword
         self.empty_class = []
         
     def _processing_text(self,proc_text):
@@ -57,7 +61,8 @@ class PreprocText:
         proc_text = [char for char in proc_text if char not in string.punctuation] if self.config.get("clean_punct") == True else proc_text
         proc_text = ''.join(proc_text)
         
-        proc_text =  ' '.join([word for word in proc_text.split() if word.lower() not in self._stpword]) if self.config.get("clean_stw") == True  else proc_text
+        
+        proc_text =  ' '.join([word for word in proc_text.split() if word.lower() not in self._stpword]) if len(self.config.get("stopwrd")) != 0  else proc_text
         
         if self.config.get("word_to_lemma") == True:
             proc_text = self.tokenizer.tokenize(proc_text)
@@ -81,9 +86,9 @@ class PreprocText:
     
     def _balans_start_index(self,class_count):
         """
-        Некоторые предложения стали пустыми после обработки,
-        их надо убрать из классов и 
-        как следствие изменить количество элементво в классе.
+           Some sentences became empty after processing, 
+           they need to be removed from the classes and
+           as a consequence, change the number of elements in the class.
         """
         
         data_proc = []
@@ -114,7 +119,34 @@ class PreprocText:
     def get_data(self,):
         return self.procc_text, self.balance_class
     
-    def processing_big_data(self,data, class_count = None, n_worker = 1):
+    def save_in_csv(self,id_img,remove_input_file = False):
+        idxs = list(chain.from_iterable([[label] * count for label, count in zip(id_img, self.balance_class)]))
+        data = {}
+        for idx, text in zip(idxs, self.procc_text):
+            if idx not in data:
+                data[idx] = []
+            data[idx].append(text)
+        data = {key:"SEP".join(data[key]) for key,val in data.items()}
+        pd.DataFrame({"id_imgs":data.keys(),
+                      "text": data.values()
+                     }).to_csv(self.config["path_to_csv"],index = False)
+        if self.config["remove_input_data"]:
+            os.remove(self.config["path_from_csv"])
+        return True
+    
+    
+    def processing_from_csv(self,):
+        df = pd.read_csv(self.config["path_from_csv"])
+        texts = [text.split("SEP") for text in df["text"]]
+        class_count = [len(sample) for sample in texts]
+        
+        data = list(zip(range(sum(class_count)),chain.from_iterable(texts)))
+        id_imgs = df["id_imgs"].values
+        assert len(data) == sum(class_count),print(len(data), sum(class_count))
+        self.processing_big_data(data,class_count = class_count,id_img = id_imgs)
+        
+    
+    def processing_big_data(self,data, class_count = None, id_img = None, n_worker = 1):
         
         with mp.Pool(n_worker) as p:
             p.map(self._worker, data)
@@ -129,4 +161,6 @@ class PreprocText:
             self.procc_text, self.balance_class = self._balans_start_index(class_count)
         else: 
             self.procc_text, self.balance_class = self.procc_text, None
+        if self.config["path_to_csv"].find(".csv")!=-1:
+            self.save_in_csv(id_img)
         return self.procc_text, self.balance_class
