@@ -71,6 +71,39 @@ def get_text_batch(lines, tokenizer, seq_length):
     return input_ids, attention_mask
 
 
+def get_text_batch_BPE(lines, tokenizer, seq_length):
+    # bos = 1 eos =2 
+    texts = []
+    one_tokens = []
+    for text in lines:
+        text = tokenizer.encode_ids(prc_text(text))
+        if len(text)>seq_length:
+            text = text[:seq_length]
+         
+        one_token = [1]*len(text) + [0]*(seq_length - len(text))
+        text = text + [0]*(seq_length - len(text))
+        
+        one_token = [1] + one_token
+        text = [1] + text
+        one_token = one_token[:seq_length]
+        text = text[:seq_length]
+        
+        try:
+            pos = text.index(0)
+        except ValueError:
+            pos = -1
+        
+        text[pos] = 2
+        one_token[pos] = 1
+        
+        texts.append(text)
+        one_tokens.append(one_token)
+            
+    input_ids = torch.LongTensor(texts).long()
+    attention_mask = torch.LongTensor(one_tokens).long()
+    return input_ids, attention_mask
+
+
 def get_tokenizer(cache_dir, pretrained_model_name="sberbank-ai/rugpt3small_based_on_gpt2"):
     tokenizer = GPT2Tokenizer.from_pretrained(pretrained_model_name, cache_dir = cache_dir)
     add_tokens = tokenizer.add_special_tokens({"bos_token": "<s>"})
