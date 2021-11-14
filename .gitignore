@@ -4,6 +4,8 @@
 /ru-clip/examples
 /ru-clip/LICENSE
 /ru-clip/README.md
+/src/train/runs
 /src/train/data
 /src/train/cache
-
+/inference/data
+inference/weights
