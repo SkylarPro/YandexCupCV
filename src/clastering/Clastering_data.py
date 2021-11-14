@@ -5,9 +5,9 @@
 
 
 #Кластеризация Piplines
-#1 
+#1 only this implimented
 # train BOF[:topN] 20k -> SentenceTransformer -> AgglomerativeClustering -> KNeighborsClassifier
-# inference predict KNeighborsClassifier
+# inference predict KNeighborsClassifier 
 #2 bs 700k sample -> SentenceTransformer -> BKmeans
 #3 bs 50k sapmle -> SentenceTransformer -> AgglomerativeClustering
 
@@ -17,8 +17,7 @@
 import sys
 from itertools import chain
 from typing import Dict
-sys.path.append("/data/hdd1/brain/BraTS19/YandexCup/sentence-transformers")
-sys.path.append("/data/hdd1/brain/BraTS19/YandexCup/src/utils")
+# sys.path.append("path/to/YandexCup")
 
 import pandas as pd
 import pickle
@@ -29,7 +28,7 @@ from torch.utils.data import DataLoader
 from sklearn.decomposition import PCA
 import numpy as np
 
-from Preprocessing_text import PreprocText,config_prep_text
+from src.utils.Preprocessing_text import PreprocText,config_prep_text
 from sentence_transformers import SentenceTransformer
 
 config = {"path_model": "model/KnnClassif.pkl",
