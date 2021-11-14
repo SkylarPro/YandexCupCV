@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score
 import pickle
 
 import sys
-sys.path.append("/data/hdd1/brain/BraTS19/YandexCup/sentence-transformers")
+# sys.path.append("path/to/YandexCup")
 from sentence_transformers import SentenceTransformer
 
 config_clater_model = {
