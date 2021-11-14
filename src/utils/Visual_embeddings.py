@@ -4,7 +4,7 @@
 # In[2]:
 import sys
 import warnings
-sys.path.append("/data/hdd1/brain/BraTS19/YandexCup/sentence-transformers")
+# sys.path.append("path/to/YandexCup")
 
 
 from sentence_transformers import SentenceTransformer

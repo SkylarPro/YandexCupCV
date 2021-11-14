@@ -51,6 +51,7 @@ class PreprocText:
     def _processing_text(self,proc_text):
         idx = proc_text[0]
         proc_text = proc_text[1]
+        print(proc_text)
         proc_text = proc_text.lower() if self.config.get("lower_text") == True else proc_text
         proc_text = re.sub('[^а-я]', " ",proc_text) if self.config.get("only_ru_simb") == True else proc_text
         proc_text = proc_text.replace("  ", " ") if self.config.get("clean_space") == True else proc_text
