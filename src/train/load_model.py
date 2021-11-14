@@ -5,7 +5,9 @@
 
 
 import sys
-sys.path.append("/data/hdd1/brain/BraTS19/YandexCup")
+# sys.path.append("path_to_YandexCup")
+from os.path import isfile 
+
 import torch
 from clip.model import VisualEncoder, TextEncoder, CLIP
 from clip.origin.clip import load
@@ -25,7 +27,8 @@ def get_tokenizer(vocab = "./cache/tokenizer/GPT2_small/vocab.json", merges="./c
     return tokenizer
 
 
-def load_model(path_to_model = "./cache/models/GPT2small_All_and_VIT32_small_N0.pt"):
+def load_model(path_to_model = None ,count_class = 10):
+    print(os.getcwd())
     
     visual_model, img_transform = load(path_to_model,jit = False)
     
@@ -34,16 +37,8 @@ def load_model(path_to_model = "./cache/models/GPT2small_All_and_VIT32_small_N0.
     configuration.vocab_size = 50264
     configuration.n_ctx = 2048
     configuration.n_positions = 2048
-    ### GPT medium
-    #     configuration.vocab_size = 50257
-    #     configuration.n_ctx = 2048
-    #     configuration.n_positions = 2048
-        
-    #     configuration.n_layer = 24
-    #     configuration.n_embd = 1024
-    #     configuration.n_head = 16
+    
     text_model = GPT2Model(configuration)
-#     text_model.h = text_model.h[:10]
     
     
     visual_encoder = VisualEncoder(
@@ -55,16 +50,20 @@ def load_model(path_to_model = "./cache/models/GPT2small_All_and_VIT32_small_N0.
         model=text_model,
         eos_token_id=2,
         d_in=768,
-        d_out=1024
+        d_out=1024,
+        count_class = count_class,
     )
     model = CLIP(
         visual_encoder=visual_encoder,
         text_encoder=text_encoder,
         img_transform=img_transform
     )
-    sd = torch.load(path_to_model)
-    model.load_state_dict(sd)
-    
+    if isfile(path_to_model):
+        sd = torch.load(path_to_model)
+        model.load_state_dict(sd)
+    else:
+        print("Weight don't init")
+        
     tokenizer = get_tokenizer()
     
     return model, img_transform, tokenizer

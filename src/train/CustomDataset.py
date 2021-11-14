@@ -3,165 +3,198 @@
 
 # In[ ]:
 import sys
-sys.path.append("/data/hdd1/brain/BraTS19/YandexCup")
+
+# sys.path.append("path/to/YandexCup")
+from os import listdir
+import os
+sys.path.append(os.getcwd())
+from os.path import isfile, join
+
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
-import cv2
 import numpy as np
+
+from torch.utils.data import Dataset
+from torch.utils.data import SubsetRandomSampler
+
+import cv2
+from PIL import Image
+
 
 import pandas as pd
 from typing import List, Tuple, Dict
 
-
-import multiprocessing  as mp
+import multiprocessing as mp
 import requests
 import jsonlines
+
 from tqdm import tqdm
 import time
 import random
-from PIL import Image
 
 
-from os import listdir
-import os
-
-from os.path import isfile, join
-
-
-
+from clip.origin.clip import _transform
 from clip.evaluate.utils import  (
-    get_text_batch, get_image_batch, get_tokenizer,
+    get_text_batch, get_image_batch,get_tokenizer, get_text_batch_BPE
 )
+from load_model import get_tokenizer
+
+
+data_config = {
+    "path_t_csv": "data/Concat_N1-7.csv",
+    "path_i_json": "data/images.json",
+    "path_i_folders": ["data/images7","data/images6","data/images5",
+                 "data/images4","data/images3","data/images2","data/images1"],
+    "down_data": False,
+    "path_to_load":"",
+    "check_img": False,
+    "len_seq": 15,
+    "mode":"Sber",
+    "resize_img":224,
+    
+}
+
+
+def sempler(data_train, batch_size = 4, split = .2):
+    
+    data_size = len(data_train)
+
+    validation_split = split
+    split = int(np.floor(validation_split * data_size))
+    indices = list(range(data_size))
+    np.random.shuffle(indices)
+
+    train_indices,val_indices = indices[split:], indices[:split]
+
+    train_sampler = SubsetRandomSampler(train_indices)
+    val_sampler = SubsetRandomSampler(val_indices)
+    
+
+    train_loader = torch.utils.data.DataLoader(data_train, batch_size=batch_size,
+                                              sampler=train_sampler,)
+    
+    val_loader = torch.utils.data.DataLoader(data_train, batch_size=batch_size,
+                                            sampler=val_sampler,)
+
+    return train_loader,val_loader
 
 
 
 class Sent2textDataset(Dataset):
+    class Args:
+        def __init__(self,cfg):
+            for k,v in cfg.items():
+                setattr(self,k,v)
     
-    def __init__(self, path_t_csv, path_i_json,
-                 path_i_folder,
-                 text_tokenizer,img_transform,
-                 down_data = False,
-                 n_classes = 20, clastering_mode = False,
-                 mode = "Sber", check_img = True
-                ):
+    def __init__(self,config_data):
         """
         path_t_csv - путь до csv файла с текстами
         path_i_json - путь до json файла с картинками
         path_i_folder - путь для сохранения скаченных фотографий
         clastering_mode - тексты разбиты на кластеры
         """
-        self.text_data = pd.read_csv(path_t_csv) if type(path_t_csv) == str else path_t_csv 
-        self.img_links = self._load_json_links(path_i_json) # links to download images
+        self.args = self.Args(config_data)
+        
+        self.text_data = pd.read_csv(self.args.path_t_csv)
+        self.img_links = self._load_json_links(self.args.path_i_json) # links to download images
         
         
-        self.path_to_img = path_i_folder if path_i_folder else path_i_json
-        
-        if down_data:
+        if self.args.down_data:
             manager = mp.Manager()
             self._imgs_path = manager.Queue()
-            self._load_imgs(list(self.img_links.items()),n_workers = 16)
-            self._check_data_in_folder()
-            self._check_open_images() if check_img else True
+            self._load_imgs(list(self.img_links.items()),n_workers = 12)
+            #self._check_data_in_folder()
+            self._check_open_images(12) if self.args.check_img else True
             
         else:
             #check data
-            self._check_open_images() if check_img else True
+            self._check_open_images(12) if self.args.check_img else True
             self._check_data_in_folder()
             
-        self.clastering_mode = clastering_mode
-        self.transform = img_transform
-        self.mode = mode
-        self.len_seq = 15 
+        self._check_files = []
         # class count get for traning
-        self.n_classes = n_classes
         # for tokenizer text, depend on model
-        self.tokenizer = text_tokenizer
+        self.tokenizer = get_tokenizer()
+        self.transform = _transform(self.args.resize_img)
         
         
     def __len__(self,):
         return self.text_data.id_img.unique().shape[0]
     
-    def _check_open_images(self,):
-        onlyfiles = [f for f in listdir(self.path_to_img) if isfile(join(self.path_to_img, f))]
-        count = 0 
-        for i_file in onlyfiles:
-            path_i = f"{self.path_to_img}/{i_file}"
-            img = cv2.imread(path_i, cv2.IMREAD_COLOR)
+    def _check_open_images(self,n_workers):
+        for image_folder in self.args.path_i_folders:
+            print(f"Start check images in {image_folder}")
             
-            if not hasattr(img,"shape"):
-                os.remove(path_i)
-                count+=1
-        print(f"Broken {count} images")
-        return True
-    
-    
-    def _stack_texts(self,now_idx):
-        """
-        return text.shape(1, self.n)
-        """
-        # get text with differend class or with currently class
-        if self.clastering_mode:
-            pass
-        else:
-            indexs = [random.randint(0,len(self.text_data)-1) for i in range(self.n_classes-1)]
-            #проверка на совпадение индексов
-            for i in range(len(indexs)):
-                if indexs[i] == now_idx:
-                    indexs[i] = now_idx + 1
+            onlyfiles = [f"{image_folder}/{f}" for f in listdir(image_folder) if isfile(join(image_folder, f))]
             
-            texts = []
-            for i in indexs:
-                t = self.text_data.iloc[i][0].split("SEP")[1:]
-                t = t[random.randint(0,len(t)-1)]
-                texts.append(t)
+            with mp.Pool(n_workers) as p:
+                p.map(self._check_open_images_w, onlyfiles)
+            
+        print("Done") 
+           
+    def _check_open_images_w(self, i_file):
+        path_i = f"{i_file}"
+        img = cv2.imread(path_i, cv2.IMREAD_COLOR)
+        
+        if not hasattr(img, "shape"):
+            print(f"del file {path_i}")
+            os.remove(path_i)
+            
                 
-            return texts 
-    
-    
     def __getitem__(self,idx):
         name_img = self.text_data.iloc[idx,1]
-                
-        img = cv2.imread(f"{self.path_to_img}/{name_img}.jpg", cv2.IMREAD_COLOR)
-        text = self.text_data.iloc[idx][0].split("SEP")[1:] # get gt text
+        path_img = self.text_data.iloc[idx,2]
+        cls_id = self.text_data.iloc[idx,3]
         
+        img = cv2.imread(f"{path_img}/{name_img}.jpg", cv2.IMREAD_COLOR)
+        texts = self.text_data.iloc[idx][0].split("SEP")[1:] # get gt text
+        
+        assert hasattr(img,"shape"), print(path_img,name_img)
         #get one random text
-        txt_idx = random.randint(0,len(text)-1)
-        text = text[txt_idx]
-        
-        texts = self._stack_texts(idx) # create new class
-        
-        gt_idx = random.randint(0,self.n_classes - 1)
-        texts.insert(gt_idx, text)
+        txt_idx = random.randint(0,len(texts)-1)
+        text = texts[txt_idx]
         
         
-        if self.mode == "Sber":
-            input_ids, attention_mask = get_text_batch([text], self.tokenizer, self.len_seq)
+        if self.args.mode == "Sber":
+            input_ids, attention_mask = get_text_batch([text], self.tokenizer, self.args.len_seq)
             image = [Image.fromarray(img)] # get_image_batch take shape count_i,img_dat
             img_input = get_image_batch(image, self.transform)
                 
-        return (img_input, input_ids, attention_mask) #, gt_idx, text
+        return (img_input, input_ids, attention_mask, torch.tensor([cls_id]))
         
         
     
-    def _check_data_in_folder(self,):
+    def _check_data_in_folder(self,top = 300):
         """
         Delete rows with csv file which no in folder.
         """
         #оставить в csv файле только те sample изображения которых есть в папке
-        onlyfiles = {int(f[:-4]): True for f in listdir(self.path_to_img) if isfile(join(self.path_to_img, f))}
+        new_df = {col:[] for col in self.text_data.columns.values}
+        all_files = {}
+        df ={"id_img":[],
+              "path":[]}
         
-        new_df = pd.DataFrame([], columns = self.text_data.columns.values)
-        data = []
-        for id_img in onlyfiles:
-            row = self.text_data[self.text_data["id_img"] == id_img]
-            if row.shape[0] != 0:
-                data.append(row)
-                
-        new_df = new_df.append(data, ignore_index=True)
-                
-        print(f"{new_df.shape[0]} images in folder from {self.text_data.shape[0]} in csv file")
-        self.text_data = new_df
+        for i, path in enumerate(self.args.path_i_folders):
+            # из этого сделать df and merge with text_data to row id_img6 ant clean row then None
+            for f in listdir(path):
+                if isfile(join(path, f)):
+                    df["id_img"].append(int(f[:-4]))
+                    df["path"].append(path)
+                    
+        df_folder = pd.DataFrame.from_dict(df)
+        
+        finall_df = df_folder.set_index('id_img').join(self.text_data.set_index('id_img'),how='inner',rsuffix='_other')
+        finall_df["id_img"] = finall_df.index
+        
+        finall_df = finall_df.set_index([pd.Index(range(len(finall_df)))])
+        
+        finall_df = finall_df.drop(labels = ["path_other"], axis = 1)
+        
+        finall_df = finall_df.reindex(columns=self.text_data.columns.values)
+        
+        finall_df = finall_df.drop_duplicates(subset = "id_img")
+       
+        self.text_data = finall_df
         
                 
     
@@ -176,7 +209,7 @@ class Sent2textDataset(Dataset):
             for obj in reader:
                 if obj['image'] not in data:
                     data[obj['image']] = obj['url']
-                
+                    
         if only_i_from_csv:
             #скачивать изображения принадлежащие csv
             only_csv_links = {idx: data[idx] for idx in self.text_data.id_img.unique()}
@@ -193,7 +226,7 @@ class Sent2textDataset(Dataset):
     def _load_img(self,links: Tuple[int,str])->int:
         try:
             response = requests.get(f"{links[1]}")
-            with open(f"{self.path_to_img}/{links[0]}.jpg", "wb") as img:
+            with open(f"{self.args.path_to_load}/{links[0]}.jpg", "wb") as img:
                 if response.content and response.status_code == 200:
                     img.write(response.content)
                     return links[0]
@@ -201,6 +234,7 @@ class Sent2textDataset(Dataset):
                     print(f"Oyy response empty, miss {links[0]}")
         except requests.exceptions.ConnectionError as e:
             print(f"Oyy, miss {links[0]}")
+        return -1
             
     def _load_imgs(self, links:  List[Tuple[int,str]], n_workers = 1) -> bool:
         """
@@ -212,8 +246,8 @@ class Sent2textDataset(Dataset):
         with mp.Pool(n_workers) as p:
             p.map(self._worker, links)
             
-            for _ in range(len(links)):
-                return_row.add(self._imgs_path.get())
+        for _ in range(len(links)):
+            return_row.add(self._imgs_path.get())
                 
         all_row.difference_update(return_row)
         
