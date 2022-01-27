@@ -115,9 +115,9 @@
 </blockquote>
 <p>BaseLine на inference давал accuracy в 42%. На всех тренировках был заморожен visual_encoder, кроме его последнего слоя projection_layer. Далее опишу этапы обучения text_encoder.
 1. Тренируем последний три трансформера в GPT3small. За 7 эпох дало буст до 48%.
-<img alt="alt text" src="https://psv4.userapi.com/c520036/u137937464/docs/d19/910453ea5279/Snimok_ekrana_2021-11-15_v_12_04_00.png?extra=WwoLm11A5scJgbCcNf6F9NArb9It3uj_wVNT7069EqTmsM2Hs1wayYb_RlJpXYNDwq7Y-8KjDysjRHgEZTJrwF6YAl3bx7iVRq23vrwywrJgwvDR6gH7Kczj-Z9ykJZALIX-63uD0cTgVCrh00arqOAfHWc" />
+<img alt="alt text" src="https://github.com/SkylarPro/YandexCupCV/blob/gh-pages/images/img1.png" />
 2. Тренируем последний три трансформера в GPT3small + embedings. За 14 эпох дало буст до 56%.
-<img alt="alt text" src="https://psv4.userapi.com/c536132/u137937464/docs/d19/b2430a6483b7/Snimok_ekrana_2021-11-15_v_12_08_46.png?extra=CKMlfnpyptn_ICIqJ3HJ4UKee-rC0X5vW8rZWIR9_XBnoWjlyubo-gj4c3jrGn7iwu-UeBt-YPAmUF3Uon3Y0V2a82V2UtyD34hqVLfHP58KRusktov_3_k8nzan_gKWveeScUrCnVxEdEPU1TVbCBB2z_E" />
+<img alt="alt text" src="https://github.com/SkylarPro/YandexCupCV/blob/gh-pages/images/img2.png" />
 3. Тренировку внутри кластера, к сожалению не успел сделать на турнире. 
 4. Тренировку кастомной модели c множеством projections, к сожалению не успел сделать на турнире.</p>
 <p>Много временя занял подбор гиппермараметров, пришел к тому, что оптимальный batch_size &gt;= 256, lr &lt;= 1e-04, wd &gt;= 5e-05, scheduler - cosine annealing, использовал optimizer Adam, так как не было времени настраивать SGD. Text preprocessing/image augmentation можно посмотреть в  <code>inference/</code>. Обучение одной эпохи заняло 3 часа на 2080 TI.</p></div>
